@@ -2,15 +2,14 @@
 
 An app to pay with Solana tokens, swapped to USDC for the business
 
-## Getting Started
+This will be an app and web app, where the user can pay via a QR code or tap to pay (app only) at a point of sale turnstile using Solana tokens.
 
-This project is a starting point for a Flutter application.
+Businesses expect money for their services, so you can pay with a token and have it be swapped to USDC for the business during the transaction, so they recieve USDC.
 
-A few resources to get you started if this is your first Flutter project:
+USDC is a stable coin that is backed basically 1:1 with US Dollars, and Stripe accepts it as payment.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+So this web app and app will integrate Stripe to build an interace for businesses to offer a QR code or tap to pay option for customers to pay with any Solana token they choose, because it will be swapped to USDC for them.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+The business receives USDC, and the user can pay with any Solana token.
+
+To contribute to this project, send SOL to: EAnhd395fYm16SgYvEGVhp1hhukVGb5oz7CwK6nBf4Mw
