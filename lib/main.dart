@@ -1,125 +1,328 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_database/firebase_database.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: FirebaseOptions(
+      apiKey: 'YOUR_FIREBASE_API_KEY',
+      appId: 'YOUR_FIREBASE_APP_ID',
+      messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+      projectId: 'YOUR_PROJECT_ID',
+      databaseURL: 'YOUR_FIREBASE_DATABASE_URL',
+    ),
+  );
+  runApp(SolanaTokenPayApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  // This widget is the root of your application.
+class SolanaTokenPayApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Solana Token-Pay Account Creator',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: TokenPayAccountCreator(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
+class TokenPayAccountCreator extends StatefulWidget {
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  _TokenPayAccountCreatorState createState() => _TokenPayAccountCreatorState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _TokenPayAccountCreatorState extends State<TokenPayAccountCreator> {
+  final _formKey = GlobalKey<FormState>();
 
-  void _incrementCounter() {
+  // List of phantom wallet addresses (example)
+  List<String> _phantomWallets = [
+    '7CD5FDC1A917E8BC5BF6FFB49A3B5A7ABCA123456',
+    'GH8J9KLMN1OPQRS2TUVWX3YZ4567890ABC',
+  ];
+
+  String? _selectedWalletAddress;
+  final _productNameController = TextEditingController();
+  final _productPriceController = TextEditingController();
+  final _couponAmountController = TextEditingController();
+
+  List<CouponCode> _couponCodes = [];
+  bool _isPercentOff = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-select first wallet address
+    _selectedWalletAddress = _phantomWallets.first;
+  }
+
+  void _addCouponCode() {
+    if (_couponAmountController.text.isNotEmpty) {
+      setState(() {
+        _couponCodes.add(CouponCode(
+          percentOff: _isPercentOff,
+          amount: double.parse(_couponAmountController.text),
+        ));
+        _couponAmountController.clear();
+      });
+    }
+  }
+
+  void _removeCouponCode(CouponCode couponCode) {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _couponCodes.remove(couponCode);
     });
+  }
+
+  void _submitForm() async {
+    if (_formKey.currentState!.validate()) {
+      // Prepare data for Firebase
+      final tokenPayData = {
+        'public_wallet_address': _selectedWalletAddress,
+        'name_of_product': _productNameController.text,
+        'price_of_product': double.parse(_productPriceController.text),
+        'coupon_codes': _couponCodes.map((coupon) => {
+          'percent_off': coupon.percentOff,
+          'amount_off': !coupon.percentOff,
+          'amount': coupon.amount,
+        }).toList(),
+      };
+
+      // Save to Firebase (example reference)
+      final database = FirebaseDatabase.instance.reference();
+      await database.child('token_pay_accounts').push().set(tokenPayData);
+
+      // Show JavaScript snippet
+      _showJavaScriptSnippet();
+    }
+  }
+
+  void _showJavaScriptSnippet() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Generated JavaScript Snippet'),
+        content: SingleChildScrollView(
+          child: Text(
+            '''
+// Placeholder JavaScript Snippet
+async function createTokenPayAccount() {
+  const accountData = {
+    publicWalletAddress: '${_selectedWalletAddress}',
+    productName: '${_productNameController.text}',
+    productPrice: ${_productPriceController.text},
+    couponCodes: ${_couponCodes.map((coupon) => {
+                //return '{percentOff: ${coupon.percentOff}, amount: ${coupon.amount}}';
+            }).toList()}
+  };
+  
+  // TODO: Implement actual token-pay account creation logic
+  console.log('Token-Pay Account Created:', accountData);
+}
+            ''',
+            style: TextStyle(fontFamily: 'monospace'),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(
+                  text: '''
+async function createTokenPayAccount() {
+  const accountData = {
+    publicWalletAddress: '${_selectedWalletAddress}',
+    productName: '${_productNameController.text}',
+    productPrice: ${_productPriceController.text},
+    couponCodes: ${_couponCodes.map((coupon) => {
+                      //return '{percentOff: ${coupon.percentOff}, amount: ${coupon.amount}}';
+                  }).toList()}
+  };
+  
+  // TODO: Implement actual token-pay account creation logic
+  console.log('Token-Pay Account Created:', accountData);
+}
+                '''));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Copied to Clipboard')),
+              );
+              Navigator.of(context).pop();
+            },
+            child: Text('Copy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text('Solana Token-Pay Account Creator'),
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+        child: Container(
+          width: 600,
+          padding: EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              children: [
+                // Wallet Address Dropdown
+                DropdownButtonFormField<String>(
+                  decoration: InputDecoration(
+                    labelText: 'Solana Public Wallet Address',
+                    border: OutlineInputBorder(),
+                  ),
+                  value: _selectedWalletAddress,
+                  items: _phantomWallets.map((address) {
+                    return DropdownMenuItem(
+                      value: address,
+                      child: Text(address),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedWalletAddress = value;
+                    });
+                  },
+                ),
+                SizedBox(height: 16),
+
+                // Product Name TextField
+                TextFormField(
+                  controller: _productNameController,
+                  decoration: InputDecoration(
+                    labelText: 'Name of Product',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a product name';
+                    }
+                    return null;
+                  },
+                ),
+                SizedBox(height: 16),
+
+                // Product Price TextField
+                TextFormField(
+                  controller: _productPriceController,
+                  decoration: InputDecoration(
+                    labelText: 'Price of Product',
+                    border: OutlineInputBorder(),
+                    prefixText: '\$',
+                  ),
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a product price';
+                    }
+                    if (double.tryParse(value) == null) {
+                      return 'Please enter a valid number';
+                    }
+                    return null;
+                  },
+                ),
+                SizedBox(height: 16),
+
+                // Coupon Code Creator
+                Text(
+                  'Coupon Codes',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                Row(
+                  children: [
+                    // Percent Off / Amount Off Toggle
+                    ToggleButtons(
+                      isSelected: [_isPercentOff, !_isPercentOff],
+                      onPressed: (index) {
+                        setState(() {
+                          _isPercentOff = index == 0;
+                        });
+                      },
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: Text('Percent Off'),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: Text('Amount Off'),
+                        ),
+                      ],
+                    ),
+                    SizedBox(width: 16),
+                    // Coupon Amount TextField
+                    Expanded(
+                      child: TextFormField(
+                        controller: _couponAmountController,
+                        decoration: InputDecoration(
+                          labelText: _isPercentOff ? 'Percent' : 'Amount',
+                          border: OutlineInputBorder(),
+                          suffixText: _isPercentOff ? '%' : '\$',
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.add),
+                      onPressed: _addCouponCode,
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+
+                // Coupon Codes List
+                if (_couponCodes.isNotEmpty)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _couponCodes.map((coupon) {
+                      return ListTile(
+                        title: Text(
+                          '${coupon.percentOff ? 'Percent' : 'Amount'} Off: ${coupon.amount}${coupon.percentOff ? '%' : '\$'}',
+                        ),
+                        trailing: IconButton(
+                          icon: Icon(Icons.delete),
+                          onPressed: () => _removeCouponCode(coupon),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+
+                SizedBox(height: 16),
+
+                // Submit Button
+                ElevatedButton(
+                  onPressed: _submitForm,
+                  child: Text('Generate JavaScript Snippet'),
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+              ],
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+          ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
+}
+
+class CouponCode {
+  final bool percentOff;
+  final double amount;
+
+  CouponCode({
+    required this.percentOff,
+    required this.amount,
+  });
 }
