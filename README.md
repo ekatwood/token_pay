@@ -2,4 +2,4 @@
 
 An app to pay with Solana tokens, swapped to USDC or SOL for the business or merchant
 
-<img width="648" alt="Screenshot 2025-03-25 at 12 40 55 PM" src="https://github.com/user-attachments/assets/d7d8d8ec-fee1-4b52-ab5b-5fc7fad8a5ab" />
+<img width="648" alt="Screenshot 2025-03-25 at 12 45 29 PM" src="https://github.com/user-attachments/assets/d27a4460-5cc7-40dd-859d-d810b48c9864" />
