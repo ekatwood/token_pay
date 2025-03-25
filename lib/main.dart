@@ -36,6 +36,12 @@ class TokenPayAccountCreator extends StatefulWidget {
   _TokenPayAccountCreatorState createState() => _TokenPayAccountCreatorState();
 }
 
+// Enum for currency selection
+enum PaymentCurrency {
+  USDC,
+  SOL
+}
+
 class _TokenPayAccountCreatorState extends State<TokenPayAccountCreator> {
   final _formKey = GlobalKey<FormState>();
 
@@ -52,6 +58,9 @@ class _TokenPayAccountCreatorState extends State<TokenPayAccountCreator> {
 
   List<CouponCode> _couponCodes = [];
   bool _isPercentOff = true;
+
+  // New currency selection variable
+  PaymentCurrency _selectedCurrency = PaymentCurrency.USDC;
 
   @override
   void initState() {
@@ -85,6 +94,7 @@ class _TokenPayAccountCreatorState extends State<TokenPayAccountCreator> {
         'public_wallet_address': _selectedWalletAddress,
         'name_of_product': _productNameController.text,
         'price_of_product': double.parse(_productPriceController.text),
+        'payment_currency': _selectedCurrency.toString().split('.').last,
         'coupon_codes': _couponCodes.map((coupon) => {
           'percent_off': coupon.percentOff,
           'amount_off': !coupon.percentOff,
@@ -233,6 +243,27 @@ async function createTokenPayAccount() {
                   },
                 ),
                 SizedBox(height: 16),
+
+  // Currency Selection Dropdown
+  DropdownButtonFormField<PaymentCurrency>(
+  decoration: InputDecoration(
+  labelText: 'Payment Currency',
+  border: OutlineInputBorder(),
+  ),
+  value: _selectedCurrency,
+  items: PaymentCurrency.values.map((currency) {
+  return DropdownMenuItem(
+  value: currency,
+  child: Text(currency.toString().split('.').last),
+  );
+  }).toList(),
+  onChanged: (value) {
+  setState(() {
+  _selectedCurrency = value!;
+  });
+  },
+  ),
+  SizedBox(height: 16),
 
                 // Coupon Code Creator
                 Text(
