@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solana Checkout</title>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const SOLANA_WALLET_ADDRESS = urlParams.get("wallet");
+        const PRODUCT_NAME = decodeURIComponent(urlParams.get("product"));
+        const ORIGINAL_PRICE = parseFloat(urlParams.get("price"));
+        const PAYMENT_CURRENCY = urlParams.get("currency");
+
+        let phantomWallet = null;
+        let estimatedGasFee = 0.0001; // Stubbed
+        let currentPrice = ORIGINAL_PRICE;
+
+        async function checkPhantomWallet() {
+            if (window.solana && window.solana.isPhantom) {
+                try {
+                    const response = await window.solana.connect();
+                    phantomWallet = response.publicKey.toString();
+                    document.getElementById("checkout-btn").innerText = `Pay with ${PAYMENT_CURRENCY}`;
+                } catch (err) {
+                    console.error("User rejected connection");
+                }
+            } else {
+                document.getElementById("checkout-btn").innerText = "Install Phantom Wallet";
+            }
+        }
+
+        async function payWithPhantom() {
+            if (!phantomWallet) {
+                return checkPhantomWallet();
+            }
+
+            try {
+                const transaction = {
+                    to: SOLANA_WALLET_ADDRESS,
+                    amount: currentPrice / 100,
+                    currency: PAYMENT_CURRENCY
+                };
+
+                const signedTransaction = await window.solana.signTransaction(transaction);
+                console.log("Transaction Signed:", signedTransaction);
+
+                window.parent.postMessage({ status: "success" }, "*");
+            } catch (error) {
+                console.error("Transaction failed:", error);
+                window.parent.postMessage({ status: "failed" }, "*");
+            }
+        }
+
+        window.onload = checkPhantomWallet;
+    </script>
+</head>
+<body>
+<div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+    <h2 id="product-name"></h2>
+    <p>Price: <span id="product-price">$0.00</span></p>
+    <p>Estimated Gas Fee: <span id="gas-fee">0.0001 SOL</span></p>
+
+    <button id="checkout-btn" onclick="payWithPhantom()">Connect Phantom Wallet</button>
+</div>
+
+<script>
+    document.getElementById("product-name").innerText = PRODUCT_NAME;
+    document.getElementById("product-price").innerText = `$${ORIGINAL_PRICE.toFixed(2)}`;
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<script>
+    (function() {
+      const widgetUrl = "https://your-domain.com/checkout-widget.html"; // Replace with actual URL
+      const iframe = document.createElement("iframe");
+
+      iframe.src = widgetUrl +
+        "?wallet=12345667790asdf123" +
+        "&product=One%20Hour%20Lesson" +
+        "&price=100" +
+        "&currency=SOL";
+
+      iframe.width = "400";
+      iframe.height = "300";
+      iframe.style.border = "none";
+
+      document.currentScript.parentNode.insertBefore(iframe, document.currentScript);
+
+      window.addEventListener("message", function(event) {
+        if (event.origin !== "https://your-domain.com") return; // Replace with your actual widget domain
+
+        if (event.data.status === "success") {
+          console.log("Payment Successful!");
+          window.paymentSuccess = true;
+        } else if (event.data.status === "failed") {
+          console.log("Payment Failed");
+          window.paymentSuccess = false;
+        }
+      }, false);
+    })();
+</script>
