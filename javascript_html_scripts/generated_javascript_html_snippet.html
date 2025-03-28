@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solana Checkout</title>
+    <script>
+        const SOLANA_WALLET_ADDRESS = "12345667790asdf123";
+        const PRODUCT_NAME = "One Hour Lesson";
+        const ORIGINAL_PRICE = 100; // USD
+        const PAYMENT_CURRENCY = "SOL";
+        const GOOGLE_CLOUD_FUNCTION_URL = "https://your-cloud-function-url.com/getCoupons"; // Replace with actual URL
+
+        let phantomWallet = null;
+        let estimatedGasFee = 0.0001; // Stubbed gas fee for now
+        let coupons = {};
+        let currentPrice = ORIGINAL_PRICE;
+
+        async function checkPhantomWallet() {
+            if (window.solana && window.solana.isPhantom) {
+                try {
+                    const response = await window.solana.connect();
+                    phantomWallet = response.publicKey.toString();
+                    document.getElementById("checkout-btn").innerText = `Pay with ${PAYMENT_CURRENCY}`;
+                } catch (err) {
+                    console.error("User rejected the connection");
+                }
+            } else {
+                console.warn("Phantom Wallet not installed");
+                document.getElementById("checkout-btn").innerText = "Install Phantom Wallet";
+            }
+        }
+
+        async function fetchValidCoupons() {
+            try {
+                const response = await fetch(GOOGLE_CLOUD_FUNCTION_URL);
+                const data = await response.json();
+                console.log("Valid Coupons Fetched:", data);
+                coupons = data; // Store coupon codes
+            } catch (error) {
+                console.error("Error fetching coupons:", error);
+                coupons = {};
+            }
+        }
+
+        function applyCoupon() {
+            const code = document.getElementById("coupon-code").value.trim();
+            if (coupons[code]) {
+                const discount = coupons[code];
+
+                if (discount.type === "percent") {
+                    currentPrice = ORIGINAL_PRICE - (ORIGINAL_PRICE * (discount.value / 100));
+                } else if (discount.type === "amount") {
+                    currentPrice = Math.max(ORIGINAL_PRICE - discount.value, 0);
+                }
+
+                document.getElementById("product-price").innerText = `$${currentPrice.toFixed(2)}`;
+                document.getElementById("coupon-message").innerText = "Coupon Applied!";
+                document.getElementById("coupon-message").style.color = "green";
+            } else {
+                document.getElementById("coupon-message").innerText = "Invalid Coupon Code";
+                document.getElementById("coupon-message").style.color = "red";
+            }
+        }
+
+        async function payWithPhantom() {
+            if (!phantomWallet) {
+                return checkPhantomWallet();
+            }
+
+            const transaction = {
+                to: SOLANA_WALLET_ADDRESS,
+                amount: currentPrice / 100, // Convert USD to SOL before using
+                currency: PAYMENT_CURRENCY
+            };
+
+            try {
+                const signedTransaction = await window.solana.signTransaction(transaction);
+                console.log("Transaction Signed:", signedTransaction);
+
+                // Send success message to parent website
+                window.parent.postMessage({ status: "success", tx: signedTransaction.signature }, "*");
+            } catch (error) {
+                console.error("Transaction failed:", error);
+                window.parent.postMessage({ status: "failed", error: error.message }, "*");
+            }
+        }
+
+        window.onload = async function () {
+            await checkPhantomWallet();
+            await fetchValidCoupons();
+        };
+    </script>
+</head>
+<body>
+<div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+    <h2 id="product-name">One Hour Lesson</h2>
+    <p>Price: <span id="product-price">$100</span></p>
+    <p>Estimated Gas Fee: <span id="gas-fee">0.0001 SOL</span></p>
+
+    <input type="text" id="coupon-code" placeholder="Enter Coupon Code" style="padding: 5px; margin: 10px;">
+    <button onclick="applyCoupon()">Apply</button>
+    <p id="coupon-message" style="font-size: 14px; color: gray;"></p>
+
+    <button id="checkout-btn" onclick="payWithPhantom()">Connect Phantom Wallet</button>
+</div>
+</body>
+</html>

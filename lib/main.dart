@@ -21,7 +21,7 @@ class SolanaTokenPayApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Solana Token-Pay Account Creator',
+      title: 'Solana token-pay Account Creator',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -176,7 +176,7 @@ async function createTokenPayAccount() {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Solana Token-Pay Account Creator'),
+        title: Text('Solana token-pay Account Creator'),
       ),
       body: Center(
         child: Container(
