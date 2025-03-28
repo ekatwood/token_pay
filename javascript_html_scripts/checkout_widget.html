@@ -9,18 +9,19 @@
         const SOLANA_WALLET_ADDRESS = urlParams.get("wallet");
         const PRODUCT_NAME = decodeURIComponent(urlParams.get("product"));
         const ORIGINAL_PRICE = parseFloat(urlParams.get("price"));
-        const PAYMENT_CURRENCY = urlParams.get("currency");
-
-        let phantomWallet = null;
-        let estimatedGasFee = 0.0001; // Stubbed
         let currentPrice = ORIGINAL_PRICE;
+        let phantomWallet = null;
+        let userTokens = [];
+        let selectedToken = "SOL";
+        let estimatedGasFee = 0.0001; // Stubbed
 
         async function checkPhantomWallet() {
             if (window.solana && window.solana.isPhantom) {
                 try {
                     const response = await window.solana.connect();
                     phantomWallet = response.publicKey.toString();
-                    document.getElementById("checkout-btn").innerText = `Pay with ${PAYMENT_CURRENCY}`;
+                    document.getElementById("checkout-btn").innerText = `Select Payment Token`;
+                    await fetchUserTokens();
                 } catch (err) {
                     console.error("User rejected connection");
                 }
@@ -29,25 +30,144 @@
             }
         }
 
+        async function fetchUserTokens() {
+            try {
+                const response = await fetch(`https://your-api.com/get-solana-tokens?wallet=${phantomWallet}`);
+                const data = await response.json();
+                userTokens = data.tokens.sort((a, b) => b.usdValue - a.usdValue);
+                populateTokenDropdown();
+            } catch (error) {
+                console.error("Error fetching token balances:", error);
+            }
+        }
+
+        function populateTokenDropdown() {
+            const dropdown = document.getElementById("token-select");
+            dropdown.innerHTML = "";
+
+            userTokens.forEach(token => {
+                const option = document.createElement("option");
+                option.value = token.symbol;
+                option.textContent = `${token.symbol} (${token.balance.toFixed(2)}) - $${token.usdValue.toFixed(2)}`;
+
+                if (token.usdValue < currentPrice) {
+                    option.disabled = true; // Disable if not enough balance
+                }
+
+                dropdown.appendChild(option);
+            });
+
+            dropdown.style.display = "block"; // Show dropdown
+            dropdown.addEventListener("change", updateSelectedToken);
+        }
+
+        function updateSelectedToken() {
+            selectedToken = document.getElementById("token-select").value;
+            const token = userTokens.find(t => t.symbol === selectedToken);
+            if (token) {
+                const tokensNeeded = (currentPrice / token.usdPrice).toFixed(6);
+                document.getElementById("tokens-needed").innerText = `You will pay: ${tokensNeeded} ${selectedToken}`;
+            }
+        }
+
+        async function applyCoupon() {
+            const couponCode = document.getElementById("coupon-input").value;
+            if (!couponCode) return;
+
+            try {
+                const response = await fetch(`https://your-api.com/check-coupon?code=${couponCode}`);
+                const result = await response.json();
+
+                if (result.valid) {
+                    if (result.type === "percent") {
+                        currentPrice = ORIGINAL_PRICE * (1 - result.discount / 100);
+                    } else if (result.type === "amount") {
+                        currentPrice = Math.max(0, ORIGINAL_PRICE - result.discount);
+                    }
+
+                    document.getElementById("product-price").innerText = `$${currentPrice.toFixed(2)}`;
+                    document.getElementById("coupon-message").innerText = `Coupon Applied! New Price: $${currentPrice.toFixed(2)}`;
+                    updateSelectedToken();
+                } else {
+                    document.getElementById("coupon-message").innerText = "Invalid coupon code.";
+                }
+            } catch (error) {
+                console.error("Error checking coupon:", error);
+                document.getElementById("coupon-message").innerText = "Error applying coupon.";
+            }
+        }
+
+        function validateEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
         async function payWithPhantom() {
+            const email = document.getElementById("email-input").value;
+            if (!validateEmail(email)) {
+                alert("Please enter a valid email address.");
+                return;
+            }
+
             if (!phantomWallet) {
                 return checkPhantomWallet();
             }
 
             try {
-                const transaction = {
+                const paymentAmount = currentPrice / 100;
+                let transaction = {
                     to: SOLANA_WALLET_ADDRESS,
-                    amount: currentPrice / 100,
-                    currency: PAYMENT_CURRENCY
+                    amount: paymentAmount,
+                    currency: selectedToken
                 };
+
+                // If the selected token isn't SOL or USDC, perform a swap
+                if (selectedToken !== "SOL" && selectedToken !== "USDC") {
+                    const swapDetails = await fetchSwapDetails(selectedToken, "USDC", paymentAmount);
+                    transaction = {
+                        ...transaction,
+                        swap: swapDetails
+                    };
+                }
 
                 const signedTransaction = await window.solana.signTransaction(transaction);
                 console.log("Transaction Signed:", signedTransaction);
+
+                await sendReceiptEmail(email, signedTransaction);
 
                 window.parent.postMessage({ status: "success" }, "*");
             } catch (error) {
                 console.error("Transaction failed:", error);
                 window.parent.postMessage({ status: "failed" }, "*");
+            }
+        }
+
+        async function fetchSwapDetails(fromToken, toToken, amount) {
+            // Call Raydium API to fetch the swap details
+            try {
+                const response = await fetch(`https://api.raydium.io/swap?from=${fromToken}&to=${toToken}&amount=${amount}`);
+                const swapData = await response.json();
+                return swapData;
+            } catch (error) {
+                console.error("Error fetching swap details:", error);
+                return null;
+            }
+        }
+
+        async function sendReceiptEmail(email, transaction) {
+            try {
+                await fetch("https://your-api.com/send-receipt", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        email,
+                        product: PRODUCT_NAME,
+                        price: currentPrice.toFixed(2),
+                        transaction
+                    })
+                });
+                console.log("Receipt email sent successfully.");
+            } catch (error) {
+                console.error("Error sending receipt email:", error);
             }
         }
 
@@ -60,7 +180,18 @@
     <p>Price: <span id="product-price">$0.00</span></p>
     <p>Estimated Gas Fee: <span id="gas-fee">0.0001 SOL</span></p>
 
-    <button id="checkout-btn" onclick="payWithPhantom()">Connect Phantom Wallet</button>
+    <input type="text" id="coupon-input" placeholder="Enter Coupon Code">
+    <button onclick="applyCoupon()">Apply</button>
+    <p id="coupon-message" style="color: green;"></p>
+
+    <select id="token-select" style="display: none;"></select>
+    <p id="tokens-needed"></p>
+
+    <input type="email" id="email-input" placeholder="Enter your email for receipt">
+    <br><br>
+
+    <button id="checkout-btn" onclick="checkPhantomWallet()">Connect Phantom Wallet</button>
+    <button id="pay-btn" onclick="payWithPhantom()" style="display:none;">Pay Now</button>
 </div>
 
 <script>

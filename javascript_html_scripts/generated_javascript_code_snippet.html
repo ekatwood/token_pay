@@ -20,10 +20,10 @@
 
         if (event.data.status === "success") {
           console.log("Payment Successful!");
-          window.paymentSuccess = true;
+          window.token_pay_transaction_success = true;
         } else if (event.data.status === "failed") {
           console.log("Payment Failed");
-          window.paymentSuccess = false;
+          window.token_pay_transaction_success = false;
         }
       }, false);
     })();
