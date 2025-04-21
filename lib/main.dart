@@ -21,7 +21,7 @@ class SolanaTokenPayApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Solana token-pay Account Creator',
+      title: 'Configure A Checkout',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -37,10 +37,7 @@ class TokenPayAccountCreator extends StatefulWidget {
 }
 
 // Enum for currency selection
-enum PaymentCurrency {
-  USDC,
-  SOL
-}
+enum PaymentCurrency { USDC, SOL }
 
 class _TokenPayAccountCreatorState extends State<TokenPayAccountCreator> {
   final _formKey = GlobalKey<FormState>();
@@ -95,11 +92,13 @@ class _TokenPayAccountCreatorState extends State<TokenPayAccountCreator> {
         'name_of_product': _productNameController.text,
         'price_of_product': double.parse(_productPriceController.text),
         'payment_currency': _selectedCurrency.toString().split('.').last,
-        'coupon_codes': _couponCodes.map((coupon) => {
-          'percent_off': coupon.percentOff,
-          'amount_off': !coupon.percentOff,
-          'amount': coupon.amount,
-        }).toList(),
+        'coupon_codes': _couponCodes
+            .map((coupon) => {
+                  'percent_off': coupon.percentOff,
+                  'amount_off': !coupon.percentOff,
+                  'amount': coupon.amount,
+                })
+            .toList(),
       };
 
       // Save to Firebase (example reference)
@@ -126,8 +125,8 @@ async function createTokenPayAccount() {
     productName: '${_productNameController.text}',
     productPrice: ${_productPriceController.text},
     couponCodes: ${_couponCodes.map((coupon) => {
-                //return '{percentOff: ${coupon.percentOff}, amount: ${coupon.amount}}';
-            }).toList()}
+                  //return '{percentOff: ${coupon.percentOff}, amount: ${coupon.amount}}';
+                }).toList()}
   };
   
   // TODO: Implement actual token-pay account creation logic
@@ -140,16 +139,15 @@ async function createTokenPayAccount() {
         actions: [
           TextButton(
             onPressed: () {
-              Clipboard.setData(ClipboardData(
-                  text: '''
+              Clipboard.setData(ClipboardData(text: '''
 async function createTokenPayAccount() {
   const accountData = {
     publicWalletAddress: '${_selectedWalletAddress}',
     productName: '${_productNameController.text}',
     productPrice: ${_productPriceController.text},
     couponCodes: ${_couponCodes.map((coupon) => {
-                      //return '{percentOff: ${coupon.percentOff}, amount: ${coupon.amount}}';
-                  }).toList()}
+                        //return '{percentOff: ${coupon.percentOff}, amount: ${coupon.amount}}';
+                      }).toList()}
   };
   
   // TODO: Implement actual token-pay account creation logic
@@ -176,7 +174,7 @@ async function createTokenPayAccount() {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Solana token-pay Account Creator'),
+        title: Text('Configure A Checkout'),
       ),
       body: Center(
         child: Container(
@@ -244,26 +242,26 @@ async function createTokenPayAccount() {
                 ),
                 SizedBox(height: 16),
 
-  // Currency Selection Dropdown
-  DropdownButtonFormField<PaymentCurrency>(
-  decoration: InputDecoration(
-  labelText: 'Payment Currency',
-  border: OutlineInputBorder(),
-  ),
-  value: _selectedCurrency,
-  items: PaymentCurrency.values.map((currency) {
-  return DropdownMenuItem(
-  value: currency,
-  child: Text(currency.toString().split('.').last),
-  );
-  }).toList(),
-  onChanged: (value) {
-  setState(() {
-  _selectedCurrency = value!;
-  });
-  },
-  ),
-  SizedBox(height: 16),
+                // Currency Selection Dropdown
+                DropdownButtonFormField<PaymentCurrency>(
+                  decoration: InputDecoration(
+                    labelText: 'Payment Currency',
+                    border: OutlineInputBorder(),
+                  ),
+                  value: _selectedCurrency,
+                  items: PaymentCurrency.values.map((currency) {
+                    return DropdownMenuItem(
+                      value: currency,
+                      child: Text(currency.toString().split('.').last),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedCurrency = value!;
+                    });
+                  },
+                ),
+                SizedBox(height: 16),
 
                 // Coupon Code Creator
                 Text(
