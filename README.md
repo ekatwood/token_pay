@@ -1,8 +1,8 @@
-# token-pay
+# Block Transact
 
-Open source solution to allow the user to make a product or service available, where the user can send any Solana token via Phantom Wallet, and the vendor or merchant receives USDC or SOL.
+Open source solution to allow the user to make a product or service available, where the user can send any Ethereum or Solana token, and the vendor or merchant receives USDC, ETH, or SOL.
 
-Implemented with Flutter, Firebase, JavaScript or Rust for smart contracts, Google Cloud functions for APIs and scheduled functions, and Rayidum protocol API for swaps.
+Implemented with Flutter, Firebase, JavaScript or Rust for smart contracts, Google Cloud functions, and 0x or Jupiter APIs for swaps.
 
 Implements https://github.com/ekatwood/escrow_subscription to handle subscription model payments.
 
